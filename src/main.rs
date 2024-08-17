@@ -19,7 +19,7 @@ fn main() {
         Instruction::GotoIfTrue(10, 3), // TO: PRIME_FOUND
         // BRANCH: BACK FROM PRIME_FOUND
         Instruction::AddI(0, Value::U64(2)),
-        Instruction::LessThanI(3, 2, Value::U64(5000)),
+        Instruction::LessThanI(3, 2, Value::U64(100)),
         Instruction::GotoIfTrue(2, 3), // TO: TEST_PRIME
         Instruction::Goto(14),         // TO: PRINT_PRIMES
         // BRANCH: PRIME_FOUND

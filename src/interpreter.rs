@@ -19,20 +19,18 @@ pub enum InterpreterError {
 #[derive(Debug, Clone, Default)]
 pub struct Function {
     instructions: Vec<Instruction>,
-    variables: HashMap<VariableIdType, VariableType>,
+    variables: Vec<VariableType>,
     parameters: Vec<VariableType>,
     return_type: Option<VariableType>,
-    variable_count: u16,
 }
 
 impl Function {
     pub fn new(parameters: &[VariableType], return_type: Option<VariableType>) -> Self {
         let mut func = Function {
             instructions: Vec::new(),
-            variables: HashMap::new(),
+            variables: Vec::new(),
             parameters: parameters.to_vec(),
             return_type,
-            variable_count: 0,
         };
 
         for parameter_type in parameters.iter() {
@@ -45,10 +43,8 @@ impl Function {
         self.instructions = instructions;
     }
     pub fn register_variable(&mut self, var_type: VariableType) -> VariableIdType {
-        self.variables.insert(self.variable_count, var_type);
-        let var_id = self.variable_count;
-        self.variable_count += 1;
-        var_id
+        self.variables.push(var_type);
+        self.variables.len() as u16
     }
     pub fn register_variables(&mut self, var_types: &[VariableType]) {
         for var_type in var_types {
@@ -56,10 +52,6 @@ impl Function {
         }
     }
 
-    pub fn set_variable_type(&mut self, var_id: VariableIdType, var_type: VariableType) {
-        assert!(!self.variables.contains_key(&var_id));
-        self.variables.insert(var_id, var_type);
-    }
     // pub fn set_all_variable_types(&mut self, types: HashMap<VariableIdType, VariableType>) {
     //     self.variables = types;
     // }
@@ -67,7 +59,7 @@ impl Function {
 
 #[derive(Debug, Clone)]
 struct ExecutionContext {
-    variables: HashMap<u16, Value>,
+    variables: Vec<Value>,
     function_parameter_stack: Vec<Value>,
     function_id: FunctionIdType,
     instruction_counter: usize,
@@ -76,8 +68,8 @@ struct ExecutionContext {
 
 impl ExecutionContext {
     fn new(func: &Function, function_id: FunctionIdType) -> Self {
-        let mut variables: HashMap<u16, Value> = HashMap::new();
-        for (a, b) in func.variables.iter() {
+        let mut variables: Vec<Value> = Vec::with_capacity(8);
+        for b in func.variables.iter() {
             let default_value = match b {
                 VariableType::U8 => Value::U8(0),
                 VariableType::U16 => Value::U16(0),
@@ -87,7 +79,8 @@ impl ExecutionContext {
                 VariableType::String => Value::String(String::new()),
                 VariableType::Array(arr_type) => Value::Array(ArrayValue::new(*arr_type.clone())),
             };
-            variables.insert(*a, default_value);
+
+            variables.push(default_value);
         }
 
         ExecutionContext {
@@ -99,14 +92,14 @@ impl ExecutionContext {
         }
     }
     fn get_variable(&self, var_id: VariableIdType) -> Result<&Value, InterpreterError> {
-        if let Some(v) = self.variables.get(&var_id) {
+        if let Some(v) = self.variables.get(var_id as usize) {
             Ok(v)
         } else {
             Err(InterpreterError::ReferencedVariableDoesNotExist(var_id))
         }
     }
     fn get_variable_mut(&mut self, var_id: VariableIdType) -> Result<&mut Value, InterpreterError> {
-        if let Some(v) = self.variables.get_mut(&var_id) {
+        if let Some(v) = self.variables.get_mut(var_id as usize) {
             Ok(v)
         } else {
             Err(InterpreterError::ReferencedVariableDoesNotExist(var_id))
@@ -117,29 +110,23 @@ impl ExecutionContext {
         var_id: VariableIdType,
         value: Value,
     ) -> Result<(), InterpreterError> {
-        let Some(current_value) = self.variables.get(&var_id) else {
+        let Some(current_value) = self.variables.get(var_id as usize) else {
             return Err(InterpreterError::ReferencedVariableDoesNotExist(var_id));
         };
 
         if current_value.get_type() != value.get_type() {
-            print!("CUR {:?} NEW: {:?}", current_value, value);
             return Err(InterpreterError::AttemptAssignedDifferentTypes(
                 current_value.get_type(),
                 value.get_type(),
             ));
         }
-
-        self.variables.insert(var_id, value);
+        *self.variables.get_mut(var_id as usize).unwrap() = value;
         Ok(())
     }
 
     fn print_state(&self, program: &Program) {
-        let mut variable_list = vec![Value::U8(255); self.variables.len()];
-        for (id, variable) in self.variables.iter() {
-            variable_list[*id as usize] = variable.clone();
-        }
         println!("---");
-        for (id, variable) in variable_list.into_iter().enumerate() {
+        for (id, variable) in self.variables.iter().cloned().enumerate() {
             println!(
                 "Variable ID {id: >4} Variable value: {:?}, variable type: {:?}",
                 variable,
@@ -296,13 +283,13 @@ impl Interpreter {
                         let lvalue = context.get_variable(*lvalue_id)?;
                         let rvalue = context.get_variable(*rvalue_id)?;
                         let new_value = op_add(lvalue.clone(), rvalue.clone());
-                        context.variables.insert(*lvalue_id, new_value);
+                        context.set_variable(*lvalue_id, new_value)?;
                     }
                     Instruction::Sub(lvalue_id, rvalue_id) => {
                         let lvalue = context.get_variable(*lvalue_id)?;
                         let rvalue = context.get_variable(*rvalue_id)?;
                         let new_value = op_sub(lvalue.clone(), rvalue.clone());
-                        context.variables.insert(*lvalue_id, new_value);
+                        context.set_variable(*lvalue_id, new_value)?;
                     }
                     Instruction::Mul(_, _) => todo!(),
                     Instruction::Div(_, _) => todo!(),
@@ -310,17 +297,18 @@ impl Interpreter {
                         let lvalue = context.get_variable(*lvalue_id)?;
                         let rvalue = context.get_variable(*rvalue_id)?;
                         let new_value = op_rem(lvalue.clone(), rvalue.clone());
-                        context.variables.insert(*lvalue_id, new_value);
+                        context.set_variable(*lvalue_id, new_value)?;
                     }
                     Instruction::AddI(lvalue_id, rvalue) => {
                         let lvalue = context.get_variable(*lvalue_id)?;
                         let new_value = op_add(lvalue.clone(), rvalue.clone());
-                        context.variables.insert(*lvalue_id, new_value);
+                        context.set_variable(*lvalue_id, new_value)?;
                     }
                     Instruction::SubI(lvalue_id, rvalue) => {
                         let lvalue = context.get_variable(*lvalue_id)?;
                         let new_value = op_sub(lvalue.clone(), rvalue.clone());
-                        context.variables.insert(*lvalue_id, new_value);
+
+                        context.set_variable(*lvalue_id, new_value)?;
                     }
                     Instruction::MulI(_, _) => todo!(),
                     Instruction::DivI(_, _) => todo!(),
@@ -378,6 +366,7 @@ impl Interpreter {
                         let result = op_not_equals(lvalue.clone(), rvalue.clone());
                         context.set_variable(*bool_var_id, result)?;
                     }
+
                     Instruction::Or(_, _) => todo!(),
                     Instruction::And(_, _) => todo!(),
                     Instruction::Xor(_, _) => todo!(),
@@ -499,14 +488,6 @@ impl Interpreter {
     }
 }
 
-pub fn create_var_map(var_list: &[VariableType]) -> HashMap<VariableIdType, VariableType> {
-    let mut map = HashMap::new();
-    for (id, var_type) in var_list.iter().cloned().enumerate() {
-        let id = id as VariableIdType;
-        map.insert(id, var_type);
-    }
-    map
-}
 #[cfg(test)]
 mod test {
     use crate::interpreter::*;
