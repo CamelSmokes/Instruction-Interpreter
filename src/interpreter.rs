@@ -4,7 +4,7 @@ use crate::{
     op_rem,
     operations::{op_add, op_equals, op_less_than, op_not_equals, op_sub},
     value::{FunctionIdType, Value, VariableIdType, VariableType},
-    Instruction,
+    ArrayValue, Instruction,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -85,7 +85,7 @@ impl ExecutionContext {
                 VariableType::U64 => Value::U64(0),
                 VariableType::Bool => Value::Bool(false),
                 VariableType::String => Value::String(String::new()),
-                VariableType::Array(arr_type) => Value::Array(*arr_type.to_owned(), Vec::new()),
+                VariableType::Array(arr_type) => Value::Array(ArrayValue::new(*arr_type.clone())),
             };
             variables.insert(*a, default_value);
         }
@@ -122,6 +122,7 @@ impl ExecutionContext {
         };
 
         if current_value.get_type() != value.get_type() {
+            print!("CUR {:?} NEW: {:?}", current_value, value);
             return Err(InterpreterError::AttemptAssignedDifferentTypes(
                 current_value.get_type(),
                 value.get_type(),
@@ -244,16 +245,12 @@ impl Interpreter {
                         let array_index = context.get_variable(*array_index)?.to_usize().unwrap();
                         let new_value = context.get_variable(*new_value_id)?.clone();
                         let array = context.get_variable_mut(*array_var_id)?;
-
-                        if let Value::Array(array_type, values) = array {
-                            if new_value.get_type() != *array_type {
+                        let array_type = array.get_type();
+                        if let Value::Array(values) = array {
+                            if new_value.get_type() != array_type {
                                 todo!();
                             }
-                            if let Some(ind) = values.get_mut(array_index) {
-                                *ind = new_value;
-                            } else {
-                                todo!()
-                            }
+                            values.set_index(array_index, new_value).unwrap();
                         } else {
                             todo!();
                         }
@@ -261,16 +258,13 @@ impl Interpreter {
                     Instruction::SetArrayIndexI(array_var_id, array_index, value) => {
                         let array_index = context.get_variable(*array_index)?.to_usize().unwrap();
                         let array = context.get_variable_mut(*array_var_id)?;
+                        let array_type = array.get_type();
 
-                        if let Value::Array(array_type, values) = array {
-                            if value.get_type() != *array_type {
+                        if let Value::Array(values) = array {
+                            if value.get_type() != array_type {
                                 todo!();
                             }
-                            if let Some(ind) = values.get_mut(array_index) {
-                                *ind = value.clone();
-                            } else {
-                                todo!()
-                            }
+                            values.set_index(array_index, value.clone()).unwrap();
                         } else {
                             todo!();
                         }
@@ -281,14 +275,17 @@ impl Interpreter {
                         let array_index = context.get_variable(*index_var_id)?.to_usize().unwrap();
                         let store_type = context.get_variable(*store_var_id)?.get_type();
                         let array = context.get_variable(*array_var_id)?;
-                        if let Value::Array(array_type, values) = array {
-                            if store_type != *array_type {
+
+                        if let Value::Array(values) = array {
+                            let array_type = values.get_inner_type();
+
+                            if store_type != array_type {
                                 todo!();
                             }
-                            if let Some(val) = values.get(array_index) {
-                                context.set_variable(*store_var_id, val.clone())?;
+                            if let Ok(val) = values.get_index(array_index) {
+                                context.set_variable(*store_var_id, val)?;
                             } else {
-                                todo!();
+                                todo!()
                             }
                         } else {
                             todo!();
@@ -456,12 +453,8 @@ impl Interpreter {
 
                                 let push_value = context.function_parameter_stack.pop().unwrap();
                                 let array = context.get_variable_mut(*var_id)?;
-                                if let Value::Array(array_type, values) = array {
-                                    if push_value.get_type() != *array_type {
-                                        todo!();
-                                    }
-
-                                    values.push(push_value);
+                                if let Value::Array(values) = array {
+                                    values.push(push_value).unwrap();
                                 } else {
                                     todo!();
                                 }
@@ -475,7 +468,7 @@ impl Interpreter {
                                 // array.len() just for now.
 
                                 let array = context.get_variable_mut(*var_id)?;
-                                if let Value::Array(_, values) = array {
+                                if let Value::Array(values) = array {
                                     let len = values.len();
                                     context.expecting_return_value = Some(*value_return_store);
                                     self.return_value_storage = Some(Value::U64(len as u64));

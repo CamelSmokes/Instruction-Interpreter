@@ -2,3 +2,10 @@
 name = "new_interp"
 version = "0.1.0"
 edition = "2021"
+
+[dev-dependencies]
+criterion = "0.3"
+
+[[bench]]
+name = "1000_primes"
+harness = false

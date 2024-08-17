@@ -11,7 +11,7 @@ fn main() {
     ]);
     main.set_instructions(vec![
         Instruction::SetI(0, Value::U64(3)),
-        Instruction::SetI(1, Value::Array(VariableType::U64, vec![Value::U64(2)])),
+        Instruction::SetI(1, Value::Array(ArrayValue::U64Array(vec![2]))),
         // BRANCH: TEST_PRIME
         Instruction::PushFunctionParameterStack(0),
         Instruction::PushFunctionParameterStack(1),
