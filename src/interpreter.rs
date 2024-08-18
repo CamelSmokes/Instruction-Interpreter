@@ -306,7 +306,7 @@ impl Interpreter {
                         None => return Err(InterpreterError::GotoNonBoolean),
                     },
 
-                    Instruction::PushFunctionParameterStack(var_id) => {
+                    Instruction::PushFunctionParameter(var_id) => {
                         let value = { context.get_variable(*var_id)? };
                         context.function_parameter_stack.push(value.clone());
                     }
@@ -458,7 +458,7 @@ mod test {
 
         main.set_instructions(vec![
             Instruction::CallFunction(1, 1),
-            Instruction::PushFunctionParameterStack(1),
+            Instruction::PushFunctionParameter(1),
             Instruction::CallNativeVoidFunction(0),
         ]);
         main.register_variables(&[VariableType::U32, VariableType::Bool]);
@@ -466,7 +466,7 @@ mod test {
         other.register_variables(&[VariableType::Bool]);
         other.set_instructions(vec![
             Instruction::SetI(0, Value::Bool(true)),
-            Instruction::PushFunctionParameterStack(0),
+            Instruction::PushFunctionParameter(0),
             Instruction::CallNativeVoidFunction(0),
             Instruction::Return(0),
         ]);
@@ -483,7 +483,7 @@ mod test {
         let instructions = vec![
             Instruction::SetI(1, Value::U64(0)),
             Instruction::AddI(0, Value::U64(32)),
-            Instruction::PushFunctionParameterStack(0),
+            Instruction::PushFunctionParameter(0),
             Instruction::CallNativeVoidFunction(0),
             Instruction::AddI(1, Value::U64(1)),
             Instruction::LessThanI(2, 1, Value::U64(10)),
@@ -498,7 +498,7 @@ mod test {
     fn test_basic_variable_operations() {
         let instructions = vec![
             Instruction::SetI(0, Value::U64(32)),
-            Instruction::PushFunctionParameterStack(0),
+            Instruction::PushFunctionParameter(0),
             Instruction::CallNativeVoidFunction(0),
         ];
         let mut func = Function::new(&[], None);

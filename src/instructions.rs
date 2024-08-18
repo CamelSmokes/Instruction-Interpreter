@@ -46,7 +46,7 @@ pub enum Instruction {
     Goto(usize),                       // used for loop breaks and continues
     GotoIfTrue(usize, VariableIdType), // used for
 
-    PushFunctionParameterStack(VariableIdType),
+    PushFunctionParameter(VariableIdType),
     CallVoidFunction(FunctionIdType),
     CallFunction(FunctionIdType, VariableIdType),
     CallNativeVoidFunction(FunctionIdType),
