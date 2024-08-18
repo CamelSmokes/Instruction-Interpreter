@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use new_interp::{
     instructions::Instruction,
     interpreter::{Function, Interpreter, Program},
@@ -69,10 +67,7 @@ fn main() {
         Instruction::SetI(6, Value::Bool(false)), //return false
         Instruction::Return(6),
     ]);
-    let mut functions = HashMap::new();
-    functions.insert(0, main);
-    functions.insert(1, prime_finder);
-    let program = Program::new(functions);
+    let program = Program::new(&[main, prime_finder]);
     let mut interpreter = Interpreter::new(program);
 
     interpreter.execute().unwrap();

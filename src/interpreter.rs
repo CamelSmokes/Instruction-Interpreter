@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::{
     instructions::Instruction,
     interpreter_error::InterpreterError,
@@ -115,6 +113,7 @@ impl ExecutionContext {
         }
         Ok(())
     }
+
     #[allow(dead_code)]
     fn print_state(&self, program: &Program) {
         println!("---");
@@ -141,15 +140,17 @@ impl ExecutionContext {
 
 #[derive(Debug, Clone)]
 pub struct Program {
-    functions: HashMap<FunctionIdType, Function>,
+    functions: Vec<Function>,
 }
 
 impl Program {
-    pub fn new(functions: HashMap<FunctionIdType, Function>) -> Self {
-        Self { functions }
+    pub fn new(functions: &[Function]) -> Self {
+        Self {
+            functions: functions.to_vec(),
+        }
     }
     fn get_function(&self, function_id: FunctionIdType) -> Result<&Function, InterpreterError> {
-        if let Some(v) = self.functions.get(&function_id) {
+        if let Some(v) = self.functions.get(function_id as usize) {
             return Ok(v);
         }
         Err(InterpreterError::FunctionDoesNotExist(function_id))
@@ -189,18 +190,17 @@ impl Interpreter {
             let function_id = context.function_id;
             let function = self.program.get_function(function_id)?;
 
+            if let Some(return_to_var_id) = context.expecting_return_value.take() {
+                let Some(return_value) = self.return_value_storage.take() else {
+                    return Err(InterpreterError::NoReturnValue);
+                };
+                context.set_variable(return_to_var_id, return_value)?;
+            }
             while let Some(instr) = function.instructions.get(context.instruction_counter) {
-                if let Some(return_to_var_id) = context.expecting_return_value {
-                    let Some(return_value) = self.return_value_storage.take() else {
-                        return Err(InterpreterError::NoReturnValue);
-                    };
-                    context.set_variable(return_to_var_id, return_value)?;
-
-                    self.return_value_storage = None;
-                    context.expecting_return_value = None;
-                }
-
                 match instr {
+                    //
+                    // MEMORY AND ARRAYS
+                    //
                     Instruction::Set(to_var_id, from_var_id) => {
                         let value = context.get_variable(*from_var_id)?;
                         context.set_variable(*to_var_id, value.clone())?
@@ -235,6 +235,9 @@ impl Interpreter {
                         let val = values.get_index(array_index)?;
                         context.set_variable(*store_var_id, val)?;
                     }
+                    //
+                    // ARITHMETIC
+                    //
                     Instruction::Add(lvalue_id, rvalue_id) => {
                         let (lvalue, rvalue) = context.get_variable_pair(*lvalue_id, *rvalue_id)?;
 
@@ -246,7 +249,6 @@ impl Interpreter {
                         let new_value = op_sub(lvalue.clone(), rvalue.clone())?;
                         context.set_variable(*lvalue_id, new_value)?;
                     }
-
                     Instruction::Rem(lvalue_id, rvalue_id) => {
                         let (lvalue, rvalue) = context.get_variable_pair(*lvalue_id, *rvalue_id)?;
                         let new_value = op_rem(lvalue.clone(), rvalue.clone())?;
@@ -263,7 +265,9 @@ impl Interpreter {
 
                         context.set_variable(*lvalue_id, new_value)?;
                     }
-
+                    //
+                    // COMPARISON
+                    //
                     Instruction::LessThan(bool_var_id, lvalue_id, rvalue_id) => {
                         let (lvalue, rvalue) = context.get_variable_pair(*lvalue_id, *rvalue_id)?;
                         let result = op_less_than(lvalue.clone(), rvalue.clone())?;
@@ -296,7 +300,9 @@ impl Interpreter {
                         let result = op_not_equals(lvalue.clone(), rvalue.clone())?;
                         context.set_variable(*bool_var_id, result)?;
                     }
-
+                    //
+                    // CONTROL FLOW
+                    //
                     Instruction::Goto(instruction_number) => {
                         after_cycle = AfterCycleAction::Goto(*instruction_number);
                     }
@@ -305,7 +311,9 @@ impl Interpreter {
                         Some(false) => {}
                         None => return Err(InterpreterError::GotoNonBoolean),
                     },
-
+                    //
+                    // FUNCTIONS
+                    //
                     Instruction::PushFunctionParameter(var_id) => {
                         let value = { context.get_variable(*var_id)? };
                         context.function_parameter_stack.push(value.clone());
@@ -354,11 +362,6 @@ impl Interpreter {
                         continue 'execute_context;
                     }
 
-                    Instruction::Return(var_id_to_return) => {
-                        let value = context.get_variable(*var_id_to_return)?;
-                        self.return_value_storage = Some(value.clone());
-                        continue 'execute_context;
-                    }
                     Instruction::CallNativeVoidFunction(native_function_id) => {
                         // println for now
                         #[allow(clippy::match_single_binding)]
@@ -403,24 +406,16 @@ impl Interpreter {
                             }
                         }
                     }
+
+                    Instruction::Return(var_id_to_return) => {
+                        let value = context.get_variable(*var_id_to_return)?;
+                        self.return_value_storage = Some(value.clone());
+                        continue 'execute_context;
+                    }
+                    //
                     // Unimplemented
-                    Instruction::Mul(_, _) => unimplemented!(),
-                    Instruction::Div(_, _) => unimplemented!(),
-                    Instruction::MulI(_, _) => unimplemented!(),
-                    Instruction::DivI(_, _) => unimplemented!(),
-                    Instruction::RemI(_, _) => unimplemented!(),
-                    Instruction::GreaterThanI(_, _, _) => unimplemented!(),
-                    Instruction::LessThanOrEqual(_, _, _) => unimplemented!(),
-                    Instruction::LessThanOrEqualI(_, _, _) => unimplemented!(),
-                    Instruction::GreaterThanOrEqual(_, _, _) => unimplemented!(),
-                    Instruction::GreaterThanOrEqualI(_, _, _) => unimplemented!(),
-                    Instruction::Or(_, _) => unimplemented!(),
-                    Instruction::And(_, _) => unimplemented!(),
-                    Instruction::Xor(_, _) => unimplemented!(),
-                    Instruction::Not(_) => unimplemented!(),
-                    Instruction::SetArrayIIndex(_, _, _) => unimplemented!(),
-                    Instruction::GetArrayIndexI(_, _, _) => unimplemented!(),
-                    Instruction::GreaterThan(_, _, _) => unimplemented!(),
+                    //
+                    _ => unimplemented!(),
                 }
 
                 // context.print_state(&self.program);
@@ -444,9 +439,7 @@ impl Interpreter {
 mod test {
     use crate::interpreter::*;
     fn run_function(function: Function) {
-        let mut functions = HashMap::new();
-        functions.insert(0, function);
-        let program = Program::new(functions);
+        let program = Program::new(&[function]);
         let mut interpreter = Interpreter::new(program);
 
         interpreter.execute().unwrap();
@@ -470,10 +463,7 @@ mod test {
             Instruction::CallNativeVoidFunction(0),
             Instruction::Return(0),
         ]);
-        let mut functions = HashMap::new();
-        functions.insert(0, main);
-        functions.insert(1, other);
-        let program = Program::new(functions);
+        let program = Program::new(&[main, other]);
         let mut interpreter = Interpreter::new(program);
 
         interpreter.execute().unwrap();

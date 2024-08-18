@@ -62,32 +62,6 @@ impl Value {
     }
 }
 
-impl From<bool> for Value {
-    fn from(value: bool) -> Self {
-        Value::Bool(value)
-    }
-}
-impl From<u8> for Value {
-    fn from(value: u8) -> Self {
-        Value::U8(value)
-    }
-}
-impl From<u16> for Value {
-    fn from(value: u16) -> Self {
-        Value::U16(value)
-    }
-}
-impl From<u32> for Value {
-    fn from(value: u32) -> Self {
-        Value::U32(value)
-    }
-}
-impl From<u64> for Value {
-    fn from(value: u64) -> Self {
-        Value::U64(value)
-    }
-}
-
 #[derive(Debug, Clone)]
 pub enum ArrayValue {
     BoolArray(Vec<bool>), // could use packed bits
@@ -153,11 +127,11 @@ impl ArrayValue {
     pub fn get_index(&self, index: usize) -> Result<Value, InterpreterError> {
         fn get_index_internal(array: &ArrayValue, index: usize) -> Option<Value> {
             Some(match array {
-                ArrayValue::BoolArray(v) => Value::from(*v.get(index)?),
-                ArrayValue::U8Array(v) => Value::from(*v.get(index)?),
-                ArrayValue::U16Array(v) => Value::from(*v.get(index)?),
-                ArrayValue::U32Array(v) => Value::from(*v.get(index)?),
-                ArrayValue::U64Array(v) => Value::from(*v.get(index)?),
+                ArrayValue::BoolArray(v) => Value::Bool(*v.get(index)?),
+                ArrayValue::U8Array(v) => Value::U8(*v.get(index)?),
+                ArrayValue::U16Array(v) => Value::U16(*v.get(index)?),
+                ArrayValue::U32Array(v) => Value::U32(*v.get(index)?),
+                ArrayValue::U64Array(v) => Value::U64(*v.get(index)?),
                 ArrayValue::StringArray(v) => Value::String(v.get(index)?.clone()),
                 ArrayValue::ArrayArray(_, v) => Value::Array(v.get(index)?.clone()),
             })
