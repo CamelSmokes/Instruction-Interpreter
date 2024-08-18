@@ -1,7 +1,10 @@
 use std::collections::HashMap;
 
 use criterion::{criterion_group, criterion_main, Criterion};
+use instructions::Instruction;
+use interpreter::{Function, Interpreter, Program};
 use new_interp::*;
+use value::{ArrayValue, Value, VariableType};
 
 pub fn benchmark_primes(c: &mut Criterion) {
     c.bench_function("Find 1000 primes", |b| {
@@ -33,14 +36,11 @@ pub fn benchmark_primes(c: &mut Criterion) {
                 Instruction::Goto(6),
                 // BRANCH: PRINT_PRIMES
                 Instruction::PushFunctionParameterStack(1),
-                Instruction::CallVoidNativeFunction(0),
+                Instruction::CallNativeVoidFunction(0),
             ]);
 
             let mut prime_finder = Function::new(
-                &[
-                    VariableType::U64,
-                    VariableType::Array(Box::new(VariableType::U64)),
-                ],
+                &[VariableType::U64, VariableType::Array(Box::new(VariableType::U64))],
                 Some(VariableType::Bool),
             );
             prime_finder.register_variables(&[
@@ -52,10 +52,10 @@ pub fn benchmark_primes(c: &mut Criterion) {
                 VariableType::U64,  // tmp value    7
             ]);
             prime_finder.set_instructions(vec![
-                Instruction::CallNativeMethod(1, 3, 1), // store array length to var 2
-                Instruction::GetArrayIndex(1, 4, 2), // store array value at index [var 2] to var 4 LOOP
-                Instruction::Set(7, 0),              // store parameter var 0 to tmp value var 7
-                Instruction::Rem(7, 4),              // Take tmp value var 7 mod var 4
+                Instruction::CallNativeMethod(1, 3, 1),    // store array length to var 2
+                Instruction::GetArrayIndex(1, 4, 2),       // store array value at index [var 2] to var 4 LOOP
+                Instruction::Set(7, 0),                    // store parameter var 0 to tmp value var 7
+                Instruction::Rem(7, 4),                    // Take tmp value var 7 mod var 4
                 Instruction::EqualsI(5, 7, Value::U64(0)), // Test if the modulus in var 7 is equal to 0
                 // IF true, return false
                 Instruction::GotoIfTrue(11, 5),
@@ -72,7 +72,7 @@ pub fn benchmark_primes(c: &mut Criterion) {
             let mut functions = HashMap::new();
             functions.insert(0, main);
             functions.insert(1, prime_finder);
-            let program = Program::new(functions, 0);
+            let program = Program::new(functions);
             let mut interpreter = Interpreter::new(program);
 
             interpreter.execute().unwrap();

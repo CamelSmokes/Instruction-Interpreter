@@ -1,6 +1,11 @@
 use std::collections::HashMap;
 
-use new_interp::*;
+use new_interp::{
+    instructions::Instruction,
+    interpreter::{Function, Interpreter, Program},
+    value::{ArrayValue, Value, VariableType},
+};
+
 fn main() {
     let mut main = Function::new(&[], None);
     main.register_variables(&[
@@ -19,7 +24,7 @@ fn main() {
         Instruction::GotoIfTrue(10, 3), // TO: PRIME_FOUND
         // BRANCH: BACK FROM PRIME_FOUND
         Instruction::AddI(0, Value::U64(2)),
-        Instruction::LessThanI(3, 2, Value::U64(100)),
+        Instruction::LessThanI(3, 2, Value::U64(1000)),
         Instruction::GotoIfTrue(2, 3), // TO: TEST_PRIME
         Instruction::Goto(14),         // TO: PRINT_PRIMES
         // BRANCH: PRIME_FOUND
@@ -29,14 +34,11 @@ fn main() {
         Instruction::Goto(6),
         // BRANCH: PRINT_PRIMES
         Instruction::PushFunctionParameterStack(1),
-        Instruction::CallVoidNativeFunction(0),
+        Instruction::CallNativeVoidFunction(0),
     ]);
 
     let mut prime_finder = Function::new(
-        &[
-            VariableType::U64,
-            VariableType::Array(Box::new(VariableType::U64)),
-        ],
+        &[VariableType::U64, VariableType::Array(Box::new(VariableType::U64))],
         Some(VariableType::Bool),
     );
     prime_finder.register_variables(&[
@@ -48,10 +50,10 @@ fn main() {
         VariableType::U64,  // tmp value    7
     ]);
     prime_finder.set_instructions(vec![
-        Instruction::CallNativeMethod(1, 3, 1), // store array length to var 2
-        Instruction::GetArrayIndex(1, 4, 2),    // store array value at index [var 2] to var 4 LOOP
-        Instruction::Set(7, 0),                 // store parameter var 0 to tmp value var 7
-        Instruction::Rem(7, 4),                 // Take tmp value var 7 mod var 4
+        Instruction::CallNativeMethod(1, 3, 1),    // store array length to var 2
+        Instruction::GetArrayIndex(1, 4, 2),       // store array value at index [var 2] to var 4 LOOP
+        Instruction::Set(7, 0),                    // store parameter var 0 to tmp value var 7
+        Instruction::Rem(7, 4),                    // Take tmp value var 7 mod var 4
         Instruction::EqualsI(5, 7, Value::U64(0)), // Test if the modulus in var 7 is equal to 0
         // IF true, return false
         Instruction::GotoIfTrue(11, 5),
@@ -68,7 +70,7 @@ fn main() {
     let mut functions = HashMap::new();
     functions.insert(0, main);
     functions.insert(1, prime_finder);
-    let program = Program::new(functions, 0);
+    let program = Program::new(functions);
     let mut interpreter = Interpreter::new(program);
 
     interpreter.execute().unwrap();

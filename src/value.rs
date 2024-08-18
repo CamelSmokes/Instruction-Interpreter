@@ -1,7 +1,6 @@
-use std::borrow::Cow;
+use crate::interpreter_error::InterpreterError;
 
 pub type StringIdType = u16;
-
 pub type VariableIdType = u16;
 pub type ArrayIdType = u16;
 pub type FunctionIdType = u16;
@@ -27,8 +26,69 @@ pub enum Value {
     String(String),
     Array(ArrayValue),
 }
-#[derive(Debug, Clone)]
 
+impl Value {
+    pub fn get_type(&self) -> VariableType {
+        match self {
+            Value::U8(_) => VariableType::U8,
+            Value::U16(_) => VariableType::U16,
+            Value::U32(_) => VariableType::U32,
+            Value::U64(_) => VariableType::U64,
+            Value::String(_) => VariableType::String,
+            Value::Array(array) => array.get_type(),
+            Value::Bool(_) => VariableType::Bool,
+        }
+    }
+    pub fn is_number(&self) -> bool {
+        matches!(self, Value::U8(_) | Value::U16(_) | Value::U32(_) | Value::U64(_))
+    }
+    pub fn is_bool(&self) -> bool {
+        matches!(self, Value::Bool(_))
+    }
+    pub fn get_bool(&self) -> Option<bool> {
+        if let Value::Bool(b) = self {
+            return Some(*b);
+        }
+        None
+    }
+    pub fn to_usize(&self) -> Result<usize, InterpreterError> {
+        Ok(match self {
+            Value::U8(v) => *v as usize,
+            Value::U16(v) => *v as usize,
+            Value::U32(v) => *v as usize,
+            Value::U64(v) => *v as usize,
+            _ => return Err(InterpreterError::ValueIsNotNumeric(self.clone())),
+        })
+    }
+}
+
+impl From<bool> for Value {
+    fn from(value: bool) -> Self {
+        Value::Bool(value)
+    }
+}
+impl From<u8> for Value {
+    fn from(value: u8) -> Self {
+        Value::U8(value)
+    }
+}
+impl From<u16> for Value {
+    fn from(value: u16) -> Self {
+        Value::U16(value)
+    }
+}
+impl From<u32> for Value {
+    fn from(value: u32) -> Self {
+        Value::U32(value)
+    }
+}
+impl From<u64> for Value {
+    fn from(value: u64) -> Self {
+        Value::U64(value)
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum ArrayValue {
     BoolArray(Vec<bool>), // could use packed bits
     U8Array(Vec<u8>),
@@ -47,9 +107,7 @@ impl ArrayValue {
             VariableType::U32 => ArrayValue::U32Array(Vec::new()),
             VariableType::U64 => ArrayValue::U64Array(Vec::new()),
             VariableType::String => ArrayValue::StringArray(Vec::new()),
-            VariableType::Array(sub_array_type) => {
-                ArrayValue::ArrayArray(*sub_array_type, Vec::new())
-            }
+            VariableType::Array(sub_array_type) => ArrayValue::ArrayArray(*sub_array_type, Vec::new()),
             VariableType::Bool => ArrayValue::BoolArray(Vec::new()),
         }
     }
@@ -67,19 +125,20 @@ impl ArrayValue {
     pub fn get_type(&self) -> VariableType {
         VariableType::Array(Box::from(self.get_inner_type()))
     }
-    pub fn set_index(&mut self, index: usize, value: Value) -> Result<(), ()> {
+    pub fn set_index(&mut self, index: usize, value: Value) -> Result<(), InterpreterError> {
         match (self, value) {
-            (ArrayValue::U8Array(a), Value::U8(v)) => *a.get_mut(index).unwrap() = v,
-            (ArrayValue::U16Array(a), Value::U16(v)) => *a.get_mut(index).unwrap() = v,
-            (ArrayValue::U32Array(a), Value::U32(v)) => *a.get_mut(index).unwrap() = v,
-            (ArrayValue::U64Array(a), Value::U64(v)) => *a.get_mut(index).unwrap() = v,
-            (ArrayValue::BoolArray(a), Value::Bool(v)) => *a.get_mut(index).unwrap() = v,
-            (ArrayValue::StringArray(a), Value::String(v)) => *a.get_mut(index).unwrap() = v,
-            _ => return Err(()),
+            (ArrayValue::U8Array(a), Value::U8(v)) => *a.get_mut(index).ok_or(InterpreterError::ArrayIndexBeyondBounds(index))? = v,
+            (ArrayValue::U16Array(a), Value::U16(v)) => *a.get_mut(index).ok_or(InterpreterError::ArrayIndexBeyondBounds(index))? = v,
+            (ArrayValue::U32Array(a), Value::U32(v)) => *a.get_mut(index).ok_or(InterpreterError::ArrayIndexBeyondBounds(index))? = v,
+            (ArrayValue::U64Array(a), Value::U64(v)) => *a.get_mut(index).ok_or(InterpreterError::ArrayIndexBeyondBounds(index))? = v,
+            (ArrayValue::BoolArray(a), Value::Bool(v)) => *a.get_mut(index).ok_or(InterpreterError::ArrayIndexBeyondBounds(index))? = v,
+            (ArrayValue::StringArray(a), Value::String(v)) => *a.get_mut(index).ok_or(InterpreterError::ArrayIndexBeyondBounds(index))? = v,
+            (s, v) => return Err(InterpreterError::ArraySetValueWithIncompatibleType(s.get_type(), v.get_type())),
         }
         Ok(())
     }
-    pub fn push(&mut self, value: Value) -> Result<(), ()> {
+
+    pub fn push(&mut self, value: Value) -> Result<(), InterpreterError> {
         match (self, value) {
             (ArrayValue::U8Array(a), Value::U8(v)) => a.push(v),
             (ArrayValue::U16Array(a), Value::U16(v)) => a.push(v),
@@ -87,21 +146,25 @@ impl ArrayValue {
             (ArrayValue::U64Array(a), Value::U64(v)) => a.push(v),
             (ArrayValue::BoolArray(a), Value::Bool(v)) => a.push(v),
             (ArrayValue::StringArray(a), Value::String(v)) => a.push(v),
-            _ => return Err(()),
+            (s, v) => return Err(InterpreterError::ArrayTypeIncompatibleWithPushValue(s.get_type(), v.get_type())),
         }
         Ok(())
     }
-    pub fn get_index(&self, index: usize) -> Result<Value, ()> {
-        Ok(match self {
-            ArrayValue::BoolArray(v) => Value::Bool(*v.get(index).unwrap()),
-            ArrayValue::U8Array(v) => Value::U8(*v.get(index).unwrap()),
-            ArrayValue::U16Array(v) => Value::U16(*v.get(index).unwrap()),
-            ArrayValue::U32Array(v) => Value::U32(*v.get(index).unwrap()),
-            ArrayValue::U64Array(v) => Value::U64(*v.get(index).unwrap()),
-            ArrayValue::StringArray(v) => Value::String(v.get(index).unwrap().clone()),
-            ArrayValue::ArrayArray(_, v) => todo!(),
-        })
+    pub fn get_index(&self, index: usize) -> Result<Value, InterpreterError> {
+        fn get_index_internal(array: &ArrayValue, index: usize) -> Option<Value> {
+            Some(match array {
+                ArrayValue::BoolArray(v) => Value::from(*v.get(index)?),
+                ArrayValue::U8Array(v) => Value::from(*v.get(index)?),
+                ArrayValue::U16Array(v) => Value::from(*v.get(index)?),
+                ArrayValue::U32Array(v) => Value::from(*v.get(index)?),
+                ArrayValue::U64Array(v) => Value::from(*v.get(index)?),
+                ArrayValue::StringArray(v) => Value::String(v.get(index)?.clone()),
+                ArrayValue::ArrayArray(_, v) => todo!(),
+            })
+        }
+        get_index_internal(self, index).ok_or(InterpreterError::ArrayIndexBeyondBounds(index))
     }
+
     pub fn len(&self) -> usize {
         match self {
             ArrayValue::BoolArray(a) => a.len(),
@@ -113,42 +176,8 @@ impl ArrayValue {
             ArrayValue::ArrayArray(t, a) => a.len(),
         }
     }
-}
 
-impl Value {
-    pub fn get_type(&self) -> VariableType {
-        match self {
-            Value::U8(_) => VariableType::U8,
-            Value::U16(_) => VariableType::U16,
-            Value::U32(_) => VariableType::U32,
-            Value::U64(_) => VariableType::U64,
-            Value::String(_) => VariableType::String,
-            Value::Array(array) => array.get_type(),
-            Value::Bool(_) => VariableType::Bool,
-        }
-    }
-    pub fn is_number(&self) -> bool {
-        matches!(
-            self,
-            Value::U8(_) | Value::U16(_) | Value::U32(_) | Value::U64(_)
-        )
-    }
-    pub fn is_bool(&self) -> bool {
-        matches!(self, Value::Bool(_))
-    }
-    pub fn get_bool(&self) -> Option<bool> {
-        if let Value::Bool(b) = self {
-            return Some(*b);
-        }
-        None
-    }
-    pub fn to_usize(&self) -> Result<usize, ()> {
-        Ok(match self {
-            Value::U8(v) => *v as usize,
-            Value::U16(v) => *v as usize,
-            Value::U32(v) => *v as usize,
-            Value::U64(v) => *v as usize,
-            _ => todo!(),
-        })
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 }

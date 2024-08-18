@@ -1,4 +1,4 @@
-use crate::{FunctionIdType, Value, VariableIdType};
+use crate::value::{FunctionIdType, Value, VariableIdType};
 
 #[derive(Debug, Clone)]
 #[repr(align(64))]
@@ -49,7 +49,7 @@ pub enum Instruction {
     PushFunctionParameterStack(VariableIdType),
     CallVoidFunction(FunctionIdType),
     CallFunction(FunctionIdType, VariableIdType),
-    CallVoidNativeFunction(FunctionIdType),
+    CallNativeVoidFunction(FunctionIdType),
 
     CallNativeVoidMethod(VariableIdType, FunctionIdType),
     CallNativeMethod(VariableIdType, VariableIdType, FunctionIdType),
