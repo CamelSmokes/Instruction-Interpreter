@@ -9,3 +9,6 @@ criterion = "0.3"
 [[bench]]
 name = "1000_primes"
 harness = false
+
+[dependencies]
+num-traits = "0.2.19"

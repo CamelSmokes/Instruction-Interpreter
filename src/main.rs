@@ -24,7 +24,7 @@ fn main() {
         Instruction::GotoIfTrue(10, 3),        // goto PRIME_FOUND if var 3 true
         // LABEL: BACK FROM PRIME_FOUND
         Instruction::AddI(0, Value::U64(2)),            // Increment check value (var 0) by 2
-        Instruction::LessThanI(3, 2, Value::U64(1000)), // Check if prime count (var 2) is less than 1000 store result to var 3
+        Instruction::LessThanI(3, 2, Value::U64(5000)), // Check if prime count (var 2) is less than 1000 store result to var 3
         Instruction::GotoIfTrue(2, 3),                  // goto TEST_PRIME if var 3 is true
         Instruction::Goto(14),                          // otherwise, goto PRINT_PRIMES
         // BRANCH: PRIME_FOUND

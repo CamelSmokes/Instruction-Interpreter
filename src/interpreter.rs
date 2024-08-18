@@ -1,4 +1,4 @@
-use std::{any::Any, collections::HashMap};
+use std::collections::HashMap;
 
 use crate::{
     instructions::Instruction,
@@ -238,62 +238,62 @@ impl Interpreter {
                     Instruction::Add(lvalue_id, rvalue_id) => {
                         let (lvalue, rvalue) = context.get_variable_pair(*lvalue_id, *rvalue_id)?;
 
-                        let new_value = op_add(lvalue.clone(), rvalue.clone());
+                        let new_value = op_add(lvalue.clone(), rvalue.clone())?;
                         context.set_variable(*lvalue_id, new_value)?;
                     }
                     Instruction::Sub(lvalue_id, rvalue_id) => {
                         let (lvalue, rvalue) = context.get_variable_pair(*lvalue_id, *rvalue_id)?;
-                        let new_value = op_sub(lvalue.clone(), rvalue.clone());
+                        let new_value = op_sub(lvalue.clone(), rvalue.clone())?;
                         context.set_variable(*lvalue_id, new_value)?;
                     }
 
                     Instruction::Rem(lvalue_id, rvalue_id) => {
                         let (lvalue, rvalue) = context.get_variable_pair(*lvalue_id, *rvalue_id)?;
-                        let new_value = op_rem(lvalue.clone(), rvalue.clone());
+                        let new_value = op_rem(lvalue.clone(), rvalue.clone())?;
                         context.set_variable(*lvalue_id, new_value)?;
                     }
                     Instruction::AddI(lvalue_id, rvalue) => {
                         let lvalue = context.get_variable(*lvalue_id)?;
-                        let new_value = op_add(lvalue.clone(), rvalue.clone());
+                        let new_value = op_add(lvalue.clone(), rvalue.clone())?;
                         context.set_variable(*lvalue_id, new_value)?;
                     }
                     Instruction::SubI(lvalue_id, rvalue) => {
                         let lvalue = context.get_variable(*lvalue_id)?;
-                        let new_value = op_sub(lvalue.clone(), rvalue.clone());
+                        let new_value = op_sub(lvalue.clone(), rvalue.clone())?;
 
                         context.set_variable(*lvalue_id, new_value)?;
                     }
 
                     Instruction::LessThan(bool_var_id, lvalue_id, rvalue_id) => {
                         let (lvalue, rvalue) = context.get_variable_pair(*lvalue_id, *rvalue_id)?;
-                        let result = op_less_than(lvalue.clone(), rvalue.clone());
+                        let result = op_less_than(lvalue.clone(), rvalue.clone())?;
                         context.set_variable(*bool_var_id, result)?;
                     }
                     Instruction::LessThanI(bool_var_id, lvalue_id, rvalue) => {
                         let lvalue = context.get_variable(*lvalue_id)?;
-                        let result = op_less_than(lvalue.clone(), rvalue.clone());
+                        let result = op_less_than(lvalue.clone(), rvalue.clone())?;
                         context.set_variable(*bool_var_id, result)?;
                     }
                     Instruction::Equals(bool_var_id, lvalue_id, rvalue_id) => {
                         let (lvalue, rvalue) = context.get_variable_pair(*lvalue_id, *rvalue_id)?;
 
-                        let result = op_equals(lvalue.clone(), rvalue.clone());
+                        let result = op_equals(lvalue.clone(), rvalue.clone())?;
                         context.set_variable(*bool_var_id, result)?;
                     }
                     Instruction::EqualsI(bool_var_id, lvalue_id, rvalue) => {
                         let lvalue = context.get_variable(*lvalue_id)?;
-                        let result = op_equals(lvalue.clone(), rvalue.clone());
+                        let result = op_equals(lvalue.clone(), rvalue.clone())?;
                         context.set_variable(*bool_var_id, result)?;
                     }
                     Instruction::NotEquals(bool_var_id, lvalue_id, rvalue_id) => {
                         let (lvalue, rvalue) = context.get_variable_pair(*lvalue_id, *rvalue_id)?;
 
-                        let result = op_not_equals(lvalue.clone(), rvalue.clone());
+                        let result = op_not_equals(lvalue.clone(), rvalue.clone())?;
                         context.set_variable(*bool_var_id, result)?;
                     }
                     Instruction::NotEqualsI(bool_var_id, lvalue_id, rvalue) => {
                         let lvalue = context.get_variable(*lvalue_id)?;
-                        let result = op_not_equals(lvalue.clone(), rvalue.clone());
+                        let result = op_not_equals(lvalue.clone(), rvalue.clone())?;
                         context.set_variable(*bool_var_id, result)?;
                     }
 

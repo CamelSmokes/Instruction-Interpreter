@@ -1,4 +1,4 @@
-use crate::value::{ArrayValue, FunctionIdType, Value, VariableIdType, VariableType};
+use crate::value::{FunctionIdType, Value, VariableIdType, VariableType};
 
 #[derive(Debug, Clone)]
 pub enum InterpreterError {
@@ -8,6 +8,7 @@ pub enum InterpreterError {
 
     OperandsNotSameType,
     OperandNotNumeric,
+    OperatorDivideByZero,
 
     // Function Calling/Callstack/Return/ControlFlow
     NoEntryFunction,

@@ -219,6 +219,7 @@ name = "new_interp"
 version = "0.1.0"
 dependencies = [
  "criterion",
+ "num-traits",
 ]
 
 [[package]]

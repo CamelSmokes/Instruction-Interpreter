@@ -159,7 +159,7 @@ impl ArrayValue {
                 ArrayValue::U32Array(v) => Value::from(*v.get(index)?),
                 ArrayValue::U64Array(v) => Value::from(*v.get(index)?),
                 ArrayValue::StringArray(v) => Value::String(v.get(index)?.clone()),
-                ArrayValue::ArrayArray(_, v) => todo!(),
+                ArrayValue::ArrayArray(_, v) => Value::Array(v.get(index)?.clone()),
             })
         }
         get_index_internal(self, index).ok_or(InterpreterError::ArrayIndexBeyondBounds(index))
@@ -173,7 +173,7 @@ impl ArrayValue {
             ArrayValue::U32Array(a) => a.len(),
             ArrayValue::U64Array(a) => a.len(),
             ArrayValue::StringArray(a) => a.len(),
-            ArrayValue::ArrayArray(t, a) => a.len(),
+            ArrayValue::ArrayArray(_, a) => a.len(),
         }
     }
 
